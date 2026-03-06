@@ -203,8 +203,8 @@ streamlit run app_streamlit.py
 
 ---
 
-# 14. Discussion
-# 14. Discussion
+# 7. Discussion
+
 
 This project demonstrates the integration of machine vision and robotics for automated object manipulation. The system successfully performs camera calibration, object detection (i.e., color and shape), coordinate transformation, and robotic pick-and-place operations.
 
@@ -231,7 +231,7 @@ This project demonstrates the integration of machine vision and robotics for aut
 
 ---
 
-# 15. Repository
+# . Repository
 
 Project Repository:
 
