@@ -24,6 +24,7 @@ The project integrates the building blocks developed during the Machine Vision c
 - Coordinate mapping
 - Object detection
 - Color and shape selection
+- robot arm pick and place
 
 The system converts object locations detected in the camera image into **robot workspace coordinates** and performs automated pick-and-place operations.
 
@@ -34,7 +35,7 @@ The system converts object locations detected in the camera image into **robot w
 The goal of this project is to build a system capable of:
 
 - Calibrating a real camera with the robot workspace
-- Detecting objects from a camera image
+- Detecting objects and distingues its properties i.e color and shape from a camera image 
 - Converting pixel coordinates (u, v) to robot coordinates (X, Y)
 - Providing two system modes:
   - **Plan Mode**
@@ -57,26 +58,18 @@ IMAGE-AND-SHAPE-DETECTABLE-PICK-AND-PLACE
 ```
 calibration/
 perception/
-robot/
-ui/
+utils/
+output/
 
-app_streamlit.py
+calibration.json
+dobot_api.py
+dobot_controller.py
+app_ui.py
 main.py
+inputimage.jpy
 ```
 
-### Module Description
 
-**Calibration Module**
-- Handles camera-to-robot calibration.
-
-**Perception Module**
-- Performs image processing and object detection.
-
-**Robot Module**
-- Controls the robot pick-and-place motion.
-
-**UI Module**
-- Provides a graphical interface for operators.
 
 ---
 
@@ -84,10 +77,16 @@ main.py
 
 The calibration tool maps image coordinates to robot workspace coordinates.
 
-The calibration process involves collecting at least **four corresponding points**:
+The calibration process involves collecting at least **four-eight corresponding points**:
 
-Pixel coordinates (u, v)  
-Robot coordinates (X, Y)
+Pixel coordinates (u, v) : a click funtion to give pixel cordinate of each click 
+
+```
+click.py
+```
+
+Robot coordinates 
+(X, Y) : using dobots studio and dobot arm
 
 Using these correspondences, the system computes a **homography matrix (H)** that transforms coordinates from image space to robot workspace.
 
@@ -96,132 +95,81 @@ The calibration information is saved in a file:
 calibration.json
 ```
 
-The file stores:
-
-- Homography matrix (3×3)
-- Image resolution
-- Metadata such as date or notes
-
-This allows the system to reuse calibration without recalibrating each time.
-
----
-
-# 5. Vision-to-Robot Pipeline
-
-The detection pipeline performs the following steps:
-
-1. Capture image from camera
-2. Preprocess the image
-3. Detect objects using segmentation
-4. Calculate the center of each object in pixel coordinates (u,v)
-5. Convert pixel coordinates to robot coordinates (X,Y) using calibration matrix H
-6. Display the detected objects with overlays and coordinates
-
-Detected targets are displayed with markers and coordinate values.
-
-### Example Detection Output
-
-![Color Detection Result](images/color_detection.png)
 
 
 ---
+# 5.Image Detection And Preprocessing
 
-# 6. Color Detection
+## a. Image Preprocessing
 
-The system supports filtering objects by color.
+Converts the image to **HSV** (for color detection) and **grayscale** (for segmentation). **Otsu thresholding** automatically binarizes the image, and **morphological operations** clean up noise and fill gaps.
 
-Example use cases:
+**Result:** A binary image — objects in **white**, background in **black**.
 
-- Pick only **red tiles**
-- Pick only **blue objects**
+---
 
-Color detection is implemented using color thresholding.
+## b. Object Segmentation
 
-### Example Color Detection Result
-![Color Detection Result Blue)](output/BlueandCircle.jpg)
+**Connected Components Analysis** labels each white region as a separate object. Small and oversized regions are filtered out, and each valid object's **bounding box**, **center point**, and **mask** are extracted.
+
+**Result:** A list of candidate objects with location and size.
+
+---
+
+## c. Shape Detection
+
+The object's **contour** is extracted and two features are computed:
+
+- **Circularity** — high value → **Circle**
+- **Polygon approximation** — 4 vertices → **Square** (aspect ratio ≈ 1) or **Rectangle**
+
+**Result:** Each object gets a **shape label**.
+
+---
+
+## d. Color Detection
+
+Object pixels are isolated using the **mask**, and the average **Hue** from the HSV image is mapped to a color: **Red, Orange, Green, or Blue**.
+
+**Result:** Each object gets a **color label**.
+
+---
+## Example
+### Any and all object and color detetion
+![alt text](output/all.jpg)
+detects all the shapes with everyclor present
+`python main.py detect --mode plan`
+### Color Detection
+
+
+
+![Color Detection Result Blue](output/BlueandCircle.jpg)
+**BlueandCircle.jpg** — Detects and highlights blue objects in the scene.
+`python main.py detect --color blue --mode plan`
 
 ![Color Detection Result Orange](output/OrangeObjet.jpg)
+**OrangeObjet.jpg** — Detects and highlights orange objects in the scene.
+`python main.py detect --color orange --mode plan`
+
 ---
 
+### Shape Detection
 
-# 7. Shape Detection
 
-The system can detect objects based on shape.
 
-Supported shapes include:
-
-- Circle
-- Square
-- Rectangle
-
-Shape detection is performed using contour analysis.
-
-### Example Shape Detection Result
 ![Shape Detection](output/BlueandCircle.jpg)
+**Circle.jpg** — Detects circular shapes
+`python main.py detect --shape circle  --mode plan`
 
----
 
-# 8. Combined Selection Logic
 
-The system can combine color and shape detection.
 
-Examples:
+### Combined filteration
+![Detect Plan Mode](output/BlueSquare.jpg)
+**BlueandCircle.jpg** — Blue color filter for only square
+`python main.py detect --shape Square --color Blue --mode plan`
 
-- Pick **blue circle**
-- Pick **red squares**
-- Pick **round objects**
-
-This feature improves the flexibility of the robotic system.
-
----
-
-# 9. Command Line Interface (CLI)
-
-The system provides a command-line interface to control the operations.
-
-### Calibration
-
-```
-python main.py calibrate
-```
-
-### Detect Objects (Plan Mode)
-```
-python main.py detect --mode plan
-```
-
-### Detect and Execute Pick
-```
-python main.py detect --mode execute
-```
-
-### Color-Based Detection
-```
-python main.py detect --color red --mode plan
-```
-
-### Shape-Based Detection
-```
-python main.py detect --shape circle --mode plan
-```
-
-### Combined Detection
-```
-python main.py pick --color blue --shape square --mode execute
-```
-
-The CLI outputs:
-
-- Pixel coordinates (u,v)
-- Robot coordinates (X,Y)
-- Detection status
-- Number of targets detected
-
-It also saves an **annotated image with detection overlays**.
-
----
-
-# 10. Graphical User Interface (GUI)
+# 6. Graphical User Interface (GUI)
 
 A graphical interface was implemented using **Streamlit** to allow an operator to interact with the system.
 
@@ -242,34 +190,9 @@ The interface also displays detected objects and computed robot coordinates.
 
 ---
 
-# 11. Plan Mode
 
-In Plan Mode:
 
-- Objects are detected
-- Robot coordinates are calculated
-- Detection overlays are shown
-
-The robot does **not move** in this mode.
-
-This allows the operator to verify the detection before execution.
-
----
-
-# 12. Execute Mode
-
-In Execute Mode:
-
-1. Object is detected
-2. Coordinates are calculated
-3. Robot receives target coordinates
-4. Robot performs the pick-and-place operation
-
-Safety confirmation is required before executing the robot movement.
-
----
-
-# 13. Running the Project
+### Running the Project
 
 Clone the repository
 
@@ -281,22 +204,30 @@ streamlit run app_streamlit.py
 ---
 
 # 14. Discussion
+# 14. Discussion
 
-This project demonstrates the integration of machine vision and robotics for automated object manipulation.
-
-The system successfully performs camera calibration, object detection, coordinate transformation, and robotic pick-and-place operations.
+This project demonstrates the integration of machine vision and robotics for automated object manipulation. The system successfully performs camera calibration, object detection (i.e., color and shape), coordinate transformation, and robotic pick-and-place operations.
 
 ### Observations
 
-- The system works reliably under moderate lighting conditions.
-- Calibration accuracy significantly affects robot positioning.
-- The GUI improves usability for operators.
+- The system works reliably in detecting objects under moderate lighting conditions, though it has difficulty detecting very bright colors such as yellow and white.  
+- Color detection is moderately reliable; some colors may be confused when brightness, shine, or texture varies.  
+- Testing was performed only on circles and squares, which gave 100% accurate results.  
+- Pick-and-place operations succeed approximately 70–80% of the time. Failures are usually due to inaccuracies in detecting the true object center—sometimes the center is detected toward the edges, causing positioning errors.  
+- The GUI improves usability for operators. 
+### Our Expriene
+- The project required around 30–40 hours to complete. Most time was spent on color and shape detection, and robot movement
+- Significant effort was needed to fine-tune mean hue values for optimal color separation.  
+- Robot control and movement were also challenging, particularly in setting up pick-and-place points, rest points, and movement paths. Some unnecessary movements and emergency stops occurred and where fixed.
+-As we were new to developing GUI, that also became difficult part .
 
 ### Possible Improvements
 
-- Improve robustness to lighting variations
-- Implement real-time object tracking
-- Add support for multiple object picking
+- Enable a live camera feed for real-time operation.  
+- Improve robustness to lighting variations.  
+- Implement real-time object tracking.  
+- Add support for picking and sorting multiple object types.  
+
 
 ---
 
