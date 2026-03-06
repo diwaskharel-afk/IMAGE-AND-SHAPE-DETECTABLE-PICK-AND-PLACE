@@ -212,14 +212,14 @@ This project demonstrates the integration of machine vision and robotics for aut
 
 - The system works reliably in detecting objects under moderate lighting conditions, though it has difficulty detecting very bright colors such as yellow and white.  
 - Color detection is moderately reliable; some colors may be confused when brightness, shine, or texture varies.  
-- Testing was performed only on circles and squares, which gave 100% accurate results.  
+- shape detection testing was performed only on circles and squares, which gave 100% accurate results.  
 - Pick-and-place operations succeed approximately 70–80% of the time. Failures are usually due to inaccuracies in detecting the true object center—sometimes the center is detected toward the edges, causing positioning errors.  
 - The GUI improves usability for operators. 
 ### Our Expriene
 - The project required around 30–40 hours to complete. Most time was spent on color and shape detection, and robot movement
 - Significant effort was needed to fine-tune mean hue values for optimal color separation.  
 - Robot control and movement were also challenging, particularly in setting up pick-and-place points, rest points, and movement paths. Some unnecessary movements and emergency stops occurred and where fixed.
--As we were new to developing GUI, that also became difficult part .
+- As we were new to developing GUI, that also became difficult part .
 
 ### Possible Improvements
 
